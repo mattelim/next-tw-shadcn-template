@@ -1,0 +1,5 @@
+Roy 24-10-2023:
+    thinking about compiling from prompt to natural language pseudocode (formal readable language)
+    prompt -> anglo-lang -> code -> run
+
+REPLs?

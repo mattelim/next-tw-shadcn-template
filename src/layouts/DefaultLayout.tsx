@@ -1,8 +1,7 @@
-export default function DefaultLayout({ children }) {
+export default function DefaultLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <header>
-        example header
       </header>
       {children}
     </>

@@ -1,8 +1,10 @@
 import { ReactElement } from "react";
-import Image from "next/image";
+// import Image from "next/image";
 import localFont from "next/font/local";
 
 import DefaultLayout from "@/layouts/DefaultLayout";
+// import CodeRunner from "@/components/CodeRunner";
+import CodeRunnerWrapper from "@/components/CodeRunnerWrapper";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -18,13 +20,12 @@ const geistMono = localFont({
 export default function Home() {
   return (
     <div
-      className={`${geistSans.variable} ${geistMono.variable} grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]`}
+      className={`${geistSans.variable} ${geistMono.variable} font-[family-name:var(--font-geist-sans)] w-full`}
     >
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        bare template
+      <main className="w-full">
+        <CodeRunnerWrapper />
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        example footer
+      <footer className="">
       </footer>
     </div>
   );
