@@ -47,6 +47,35 @@ export function emptyPromptHandler(prompt: string, res: NextApiResponse) {
   }
 }
 
+export function modelOverrideHandler(modelQuality: string | undefined) {
+  if (!modelQuality) return "";
+  switch (DEFAULT_API_TYPE) {
+    case "OPENAI": {
+      // switch (modelQuality) {
+      //   case "low": {
+      //     return "gpt-4o-mini";
+      //   }
+      //   case "high": {
+      //     return "gpt-4o";
+      //   }
+      // }
+      // I don't wanna risk $$$
+      return "gpt-4o-mini";
+    }
+    case "OLLAMA":
+    default: {
+      switch (modelQuality) {
+        case "low": {
+          return "qwen2.5-coder:7b";
+        }
+        case "high": {
+          return "qwen2.5-coder:32b";
+        }
+      }
+    }
+  }
+}
+
 export async function apiCallHandler(
   prompt: string,
   messages: object[],
@@ -56,7 +85,19 @@ export async function apiCallHandler(
 ) {
   console.log("User prompt:", prompt);
   switch (apiType) {
-    case "OLLAMA": {
+    case "OPENAI": {
+      const completion = await openai.chat.completions.create({
+        model: modelOverride || "gpt-4o-mini",
+        messages,
+      });
+      console.log(completion);
+      let oAIRes = completion.choices[0].message.content;
+      oAIRes = handleCommonErrors(oAIRes as string);
+      console.log("Sent: " + oAIRes);
+      return res.status(200).json({ data: oAIRes });
+    }
+    case "OLLAMA":
+    default: {
       const completion = await fetch("https://ollama.mattl.im/chat", {
         method: "POST",
         headers: {
@@ -74,18 +115,6 @@ export async function apiCallHandler(
       ollamaRes = handleCommonErrors(ollamaRes as string);
       console.log("Sent: " + ollamaRes);
       return res.status(200).json({ data: ollamaRes });
-    }
-    case "OPENAI":
-    default: {
-      const completion = await openai.chat.completions.create({
-        model: modelOverride || "gpt-4o-mini",
-        messages,
-      });
-      console.log(completion);
-      let oAIRes = completion.choices[0].message.content;
-      oAIRes = handleCommonErrors(oAIRes as string);
-      console.log("Sent: " + oAIRes);
-      return res.status(200).json({ data: oAIRes });
     }
   }
 }

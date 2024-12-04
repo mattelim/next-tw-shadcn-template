@@ -17,17 +17,11 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "./ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Save } from "lucide-react";
 
 import CodeEditor from "./CodeEditor";
 import { languages } from "./CodeRunnerWrapper";
 import { capitalizeFirstLetter } from "@/lib/utils";
-
-// import './App.css';
-// let pyodide: any;
-// let opal: any;
-// let quickjsWasm: any;
-// let interpreter: any;
-// let runTime: any;
 
 declare global {
   interface Window {
@@ -183,7 +177,7 @@ export default function CodeRunner({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ prompt: promptInput }),
+          body: JSON.stringify({ prompt: promptInput, modelQuality }),
         },
       );
 
@@ -244,7 +238,11 @@ export default function CodeRunner({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ prompt: pseudocodeInput, selectedLanguage }),
+          body: JSON.stringify({
+            prompt: pseudocodeInput,
+            selectedLanguage,
+            modelQuality,
+          }),
         },
       );
 
@@ -369,85 +367,115 @@ global_output = []
     }
   }, [runCodeOutput]);
 
+  function handleSaveCodeBlock(event: React.FormEvent) {
+    event.preventDefault();
+  }
+
   return (
-    <div className="space-y-8 w-full p-4">
-      {/* <div className="w-[180px]">
+    <>
+      <div className="sticky top-4 flex m-4 p-4 border border-border rounded-md justify-between bg-white/90 backdrop-blur-md hover:bg-white transition-all">
+        <span>Floating toolbar</span>
+        <Select
+          onValueChange={(value) => {
+            setModelQuality(value as TModelQuality);
+            // setCodeInput('');
+            // setRunCodeOutput('');
+          }}
+          value={modelQuality}
+        >
+          <SelectTrigger className="w-max">
+            <SelectValue placeholder="Select model quality" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="low">Low </SelectItem>
+            <SelectItem value="high">High </SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          className="p-0 aspect-square [&_svg]:size-6"
+          onClick={handleSaveCodeBlock}
+        >
+          <Save strokeWidth={1.5} />
+        </Button>
+      </div>
+      <div className="space-y-8 w-full p-4">
+        {/* <div className="w-[180px]">
         <select className="w-full rounded p-2 bg-" value={selectedLanguage} onChange={(e) => setSelectedLanguage(e.target.value)}>
           <option value="python">Python</option>
           <option value="javascript">JavaScript</option>
         </select>
       </div> */}
-      <div>
-        <h3>Prompt</h3>
-        <Textarea
-          rows={3}
-          cols={50}
-          value={promptInput}
-          onChange={(e) => setPromptInput(e.target.value)}
-          placeholder={`Enter your function prompt here...`}
-          className="font-mono text-base border p-2 rounded-md w-full overflow-scroll"
-        />
-        <div className="w-full flex justify-end gap-2">
-          <Button
-            onClick={promptToPseudocodeSubmit}
-            // disabled={isRunning || isLoadingInterpreter}
-          >
-            Generate pseudocode
-          </Button>
-        </div>
-      </div>
-
-      <div>
-        <h3>Pseudocode</h3>
-        <Textarea
-          rows={8}
-          cols={50}
-          value={pseudocodeInput}
-          onChange={(e) => setPseudocodeInput(e.target.value)}
-          placeholder={`Enter your function pseudocode here...`}
-          className="font-mono text-base border p-2 rounded-md w-full overflow-scroll"
-        />
-      </div>
-
-      <div className="flex justify-between">
-        <div className="flex gap-4">
-          <Select
-            onValueChange={(value) => {
-              setSelectedLanguage(value as languages);
-              // setCodeInput('');
-              // setRunCodeOutput('');
-            }}
-            value={selectedLanguage}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Programming Language" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="python">Python</SelectItem>
-              <SelectItem value="javascript">JavaScript</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="flex items-center text-sm gap-2">
-            <p className=" shrink-0">VM Mode</p>
-            <Switch
-              checked={vmMode}
-              onCheckedChange={() => setVmMode(!vmMode)}
-            />
+        <div>
+          <h3>Prompt</h3>
+          <Textarea
+            rows={3}
+            cols={50}
+            value={promptInput}
+            onChange={(e) => setPromptInput(e.target.value)}
+            placeholder={`Enter your function prompt here...`}
+            className="font-mono text-base border p-2 rounded-md w-full overflow-scroll"
+          />
+          <div className="w-full flex justify-end gap-2">
+            <Button
+              onClick={promptToPseudocodeSubmit}
+              // disabled={isRunning || isLoadingInterpreter}
+            >
+              Generate pseudocode
+            </Button>
           </div>
         </div>
-        <div className="w-full flex justify-end gap-2">
-          <Button
-            onClick={pseudocodeToCodeSubmit}
-            // disabled={isRunning || isLoadingInterpreter}
-          >
-            Generate {capitalizeFirstLetter(selectedLanguage)} code
-          </Button>
-        </div>
-      </div>
 
-      <div>
-        <h3>{capitalizeFirstLetter(selectedLanguage)} Code</h3>
-        {/* <textarea
+        <div>
+          <h3>Pseudocode</h3>
+          <Textarea
+            rows={8}
+            cols={50}
+            value={pseudocodeInput}
+            onChange={(e) => setPseudocodeInput(e.target.value)}
+            placeholder={`Enter your function pseudocode here...`}
+            className="font-mono text-base border p-2 rounded-md w-full overflow-scroll"
+          />
+        </div>
+
+        <div className="flex justify-between">
+          <div className="flex gap-4">
+            <Select
+              onValueChange={(value) => {
+                setSelectedLanguage(value as languages);
+                // setCodeInput('');
+                // setRunCodeOutput('');
+              }}
+              value={selectedLanguage}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Programming Language" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="python">Python</SelectItem>
+                <SelectItem value="javascript">JavaScript</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center text-sm gap-2">
+              <p className=" shrink-0">VM Mode</p>
+              <Switch
+                checked={vmMode}
+                onCheckedChange={() => setVmMode(!vmMode)}
+              />
+            </div>
+          </div>
+          <div className="w-full flex justify-end gap-2">
+            <Button
+              onClick={pseudocodeToCodeSubmit}
+              // disabled={isRunning || isLoadingInterpreter}
+            >
+              Generate {capitalizeFirstLetter(selectedLanguage)} code
+            </Button>
+          </div>
+        </div>
+
+        <div>
+          <h3>{capitalizeFirstLetter(selectedLanguage)} Code</h3>
+          {/* <textarea
           rows={10}
           cols={50}
           value={codeInput}
@@ -455,7 +483,7 @@ global_output = []
           placeholder={`Enter your ${selectedLanguage} code here...`}
           className='font-mono border p-2 rounded-md w-full overflow-scroll'
         /> */}
-        {/* <Textarea
+          {/* <Textarea
           rows={10}
           cols={50}
           value={codeInput}
@@ -463,52 +491,53 @@ global_output = []
           placeholder={`Enter your ${selectedLanguage} code here...`}
           className='font-mono text-base border p-2 rounded-md w-full overflow-scroll'
         /> */}
-        <CodeEditor
-          input={codeInput}
-          setInput={setCodeInput}
-          selectedLanguage={selectedLanguage}
-        />
-        {showCodeExample && (
-          <>
-            <h3>Example</h3>
-            <CodeEditor
-              input={codeExampleInput}
-              setInput={setCodeExampleInput}
-              selectedLanguage={selectedLanguage}
-              editorHeight="100px"
-            />
-          </>
-        )}
-        <div className="w-full flex justify-end gap-2">
-          <Button
-            onClick={handleRunCode}
-            disabled={isRunning || isLoadingInterpreter}
+          <CodeEditor
+            input={codeInput}
+            setInput={setCodeInput}
+            selectedLanguage={selectedLanguage}
+          />
+          {showCodeExample && (
+            <>
+              <h3>Example</h3>
+              <CodeEditor
+                input={codeExampleInput}
+                setInput={setCodeExampleInput}
+                selectedLanguage={selectedLanguage}
+                editorHeight="100px"
+              />
+            </>
+          )}
+          <div className="w-full flex justify-end gap-2">
+            <Button
+              onClick={handleRunCode}
+              disabled={isRunning || isLoadingInterpreter}
+            >
+              {isLoadingInterpreter
+                ? "Loading Pyodide..."
+                : isRunning
+                  ? "Running..."
+                  : `Run ${capitalizeFirstLetter(selectedLanguage)} Code`}
+            </Button>
+            <Button
+              onClick={handleReset}
+              disabled={isRunning || isLoadingInterpreter}
+            >
+              Reset REPL
+            </Button>
+          </div>
+        </div>
+
+        <div className="output">
+          <h3>Output</h3>
+          <pre
+            id="run-code-output-container"
+            className="border p-2 rounded-md w-full h-40 overflow-scroll "
           >
-            {isLoadingInterpreter
-              ? "Loading Pyodide..."
-              : isRunning
-                ? "Running..."
-                : `Run ${capitalizeFirstLetter(selectedLanguage)} Code`}
-          </Button>
-          <Button
-            onClick={handleReset}
-            disabled={isRunning || isLoadingInterpreter}
-          >
-            Reset REPL
-          </Button>
+            {runCodeOutput}
+          </pre>
         </div>
       </div>
-
-      <div className="output">
-        <h3>Output</h3>
-        <pre
-          id="run-code-output-container"
-          className="border p-2 rounded-md w-full h-40 overflow-scroll "
-        >
-          {runCodeOutput}
-        </pre>
-      </div>
-    </div>
+    </>
   );
 }
 

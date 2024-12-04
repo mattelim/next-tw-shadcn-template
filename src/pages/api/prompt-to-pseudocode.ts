@@ -8,6 +8,7 @@ import {
   defaultErrorHandler,
   emptyPromptHandler,
   apiCallHandler,
+  modelOverrideHandler,
 } from "./apiUtil";
 
 export default async function handler(
@@ -16,6 +17,8 @@ export default async function handler(
 ) {
   // res.status(200).json({ name: "John Doe" });
   const prompt = req.body.prompt || "";
+  const modelOverride = modelOverrideHandler(req.body.modelQuality);
+  console.log("modelOverride:", modelOverride);
   emptyPromptHandler(prompt, res);
   const messages = [
     {
@@ -35,7 +38,13 @@ ${prompt}
     },
   ];
   try {
-    await apiCallHandler(prompt, messages, res, DEFAULT_API_TYPE);
+    await apiCallHandler(
+      prompt,
+      messages,
+      res,
+      DEFAULT_API_TYPE,
+      modelOverride,
+    );
   } catch (error: any) {
     await defaultErrorHandler(error, res, DEFAULT_API_TYPE);
   }
