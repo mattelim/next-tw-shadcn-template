@@ -86,18 +86,20 @@ export async function apiCallHandler(
   console.log("User prompt:", prompt);
   switch (apiType) {
     case "OPENAI": {
+      const modelUsed = modelOverride || "gpt-4o-mini";
       const completion = await openai.chat.completions.create({
-        model: modelOverride || "gpt-4o-mini",
+        model: modelUsed,
         messages,
       });
       console.log(completion);
       let oAIRes = completion.choices[0].message.content;
       oAIRes = handleCommonErrors(oAIRes as string);
       console.log("Sent: " + oAIRes);
-      return res.status(200).json({ data: oAIRes });
+      return res.status(200).json({ data: oAIRes, modelUsed });
     }
     case "OLLAMA":
     default: {
+      const modelUsed = modelOverride || "qwen2.5-coder:7b";
       const completion = await fetch("https://ollama.mattl.im/chat", {
         method: "POST",
         headers: {
@@ -105,7 +107,7 @@ export async function apiCallHandler(
           Authorization: `Bearer ${ollamaApiKey}`,
         },
         body: JSON.stringify({
-          model: modelOverride || "qwen2.5-coder:7b",
+          model: modelUsed,
           messages,
         }),
       });
@@ -114,7 +116,7 @@ export async function apiCallHandler(
       let ollamaRes = completionJson.message.content;
       ollamaRes = handleCommonErrors(ollamaRes as string);
       console.log("Sent: " + ollamaRes);
-      return res.status(200).json({ data: ollamaRes });
+      return res.status(200).json({ data: ollamaRes, modelUsed });
     }
   }
 }

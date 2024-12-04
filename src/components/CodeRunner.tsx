@@ -22,6 +22,7 @@ import { Save } from "lucide-react";
 import CodeEditor from "./CodeEditor";
 import { languages } from "./CodeRunnerWrapper";
 import { capitalizeFirstLetter } from "@/lib/utils";
+import { db } from "@/lib/db";
 
 declare global {
   interface Window {
@@ -155,7 +156,8 @@ export default function CodeRunner({
   const [runCodeOutput, setRunCodeOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [vmMode, setVmMode] = useState<boolean>(false);
-  const [modelQuality, setModelQuality] = useState<TModelQuality>("low");
+  const [modelQuality, setModelQuality] = useState<TModelQuality>("high");
+  const [codeBlockTitle, setCodeBlockTitle] = useState("");
 
   // const [selectedLanguage, setSelectedLanguage] = useState<languages>('javascript');
 
@@ -369,12 +371,42 @@ global_output = []
 
   function handleSaveCodeBlock(event: React.FormEvent) {
     event.preventDefault();
+    try {
+      const id = db.codeBlocks.add({
+        title: codeBlockTitle,
+        prompt: promptInput,
+        pseudocode: pseudocodeInput,
+        codeInstances: [
+          {
+            programmingLanguage: selectedLanguage,
+            code: codeInput,
+            example: codeExampleInput,
+          },
+        ],
+        metaData: {
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          modelUsed: modelQuality,
+          createdBy: "",
+        },
+      });
+      console.log("Saved code block with id:", id);
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    }
   }
 
   return (
     <>
       <div className="sticky top-4 flex m-4 p-4 border border-border rounded-md justify-between bg-white/90 backdrop-blur-md hover:bg-white transition-all">
-        <span>Floating toolbar</span>
+        <input
+          type="text"
+          placeholder="Title"
+          value={codeBlockTitle}
+          onChange={(e) => setCodeBlockTitle(e.target.value)}
+          className="p-2 rounded-md w-96"
+        />
         <Select
           onValueChange={(value) => {
             setModelQuality(value as TModelQuality);

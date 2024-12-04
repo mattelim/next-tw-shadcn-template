@@ -18,6 +18,7 @@ export default async function handler(
   // res.status(200).json({ name: "John Doe" });
   const prompt = req.body.prompt || "";
   const modelOverride = modelOverrideHandler(req.body.modelQuality);
+  console.log("modelOverride:", modelOverride);
   const selectedLanguage = req.body.selectedLanguage || "Python";
   const commentPrefix = commentPrefixForLanguage(selectedLanguage);
   emptyPromptHandler(prompt, res);
