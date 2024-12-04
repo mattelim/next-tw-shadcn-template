@@ -5,6 +5,7 @@ import {
   QuickJSContext,
   QuickJSRuntime,
 } from "quickjs-emscripten";
+// import { loadPyodide } from "pyodide";  // tried, doesn't work
 
 import { Button } from "@/components/ui/button";
 import {
@@ -140,6 +141,8 @@ global_output = []
   return { runTimeRef, interpreterRef, isLoadingInterpreter };
 };
 
+type TModelQuality = "low" | "high";
+
 export default function CodeRunner({
   selectedLanguage,
   setSelectedLanguage,
@@ -157,7 +160,8 @@ export default function CodeRunner({
   const [showCodeExample, setShowCodeExample] = useState(true);
   const [runCodeOutput, setRunCodeOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
-  const [vmMode, setVmMode] = useState<boolean>(true);
+  const [vmMode, setVmMode] = useState<boolean>(false);
+  const [modelQuality, setModelQuality] = useState<TModelQuality>("low");
 
   // const [selectedLanguage, setSelectedLanguage] = useState<languages>('javascript');
 
@@ -274,22 +278,25 @@ export default function CodeRunner({
 
   const handleRunCode = useCallback(async () => {
     setIsRunning(true);
-    console.log(codeInput + "\n" + codeExampleInput);
-
+    const combinedInput = codeInput + "\n" + codeExampleInput;
+    if (!vmMode) handleReset();
     try {
       if (selectedLanguage === "python") {
         // const pyodide = interpreter;
         // Capture the console output
         // let capturedOutput = '';
-
-        interpreterRef.current.runPython(codeInput + "\n" + codeExampleInput);
+        interpreterRef.current.runPython(combinedInput);
         const result = interpreterRef.current.globals.get("global_output");
         setRunCodeOutput(result.toJs().join("\n"));
       } else if (selectedLanguage === "javascript") {
         // const quickjs: QuickJSContext = interpreterRef.current;
 
+        const combinedInputForQuickJS = combinedInput.replace(
+          /console\.log\((.*?)\);?/g,
+          "$1",
+        );
         const result = (interpreterRef.current as QuickJSContext).evalCode(
-          codeInput + "\n" + codeExampleInput,
+          combinedInputForQuickJS,
         );
 
         // console.log('Result:', result);
@@ -300,13 +307,13 @@ export default function CodeRunner({
           // console.error(interpreterRef.current.dump(result.error));
           const error = interpreterRef.current.dump(result.error);
           setRunCodeOutput((prev) => {
-            return `${prev}\nError: ${error.name} - ${error.message}`;
+            return `${prev}Error: ${error.name} - ${error.message}\n`;
           });
         } else {
           // console.log(interpreterRef.current.getString(result.value));
           // setRunCodeOutput(prev => { return `${prev}\n${interpreterRef.current.getString(result.value)}` });
           setRunCodeOutput((prev) => {
-            return `${prev}\n${JSON.stringify(interpreterRef.current.dump(result.value), null, 0)}`;
+            return `${prev}${JSON.stringify(interpreterRef.current.dump(result.value), null, 0)}\n`;
           });
         }
       }
@@ -315,7 +322,7 @@ export default function CodeRunner({
     }
 
     setIsRunning(false);
-  }, [codeInput, codeExampleInput, selectedLanguage, interpreterRef]);
+  }, [codeInput, codeExampleInput, selectedLanguage, interpreterRef, vmMode]);
 
   const handleReset = useCallback(() => {
     // setCodeInput('');
@@ -323,18 +330,34 @@ export default function CodeRunner({
     if (interpreterRef.current) {
       if (selectedLanguage === "python") {
         // Reinitialize Pyodide to reset the Python environment
+        interpreterRef.current.globals.clear();
         interpreterRef.current.runPython(`
 import sys
-sys.modules.clear()
-`);
-        // interpreterRef.current.globals.clear();
+from js import console
+class ConsoleCapture:
+    def write(self, s):
+        if s.strip():
+            console.log(s)
+            global_output.append(s)
+    def flush(self):
+        pass
+
+sys.stdout = ConsoleCapture()
+sys.stderr = ConsoleCapture()
+global_output = []
+                `);
       } else if (selectedLanguage === "javascript") {
         // Reinitialize QuickJS to reset the JavaScript environment
         interpreterRef.current.dispose();
         interpreterRef.current = runTimeRef.current.newContext();
       }
     }
+    setRunCodeOutput("");
   }, [selectedLanguage, interpreterRef, runTimeRef]);
+
+  useEffect(() => {
+    if (!vmMode) handleReset();
+  }, [vmMode]);
 
   // whenever runCodeOutput changes, scroll to the bottom of the output container
   useEffect(() => {

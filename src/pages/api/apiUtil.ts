@@ -7,12 +7,9 @@ import OpenAI from "openai";
 //   data: string;
 // };
 
-export enum ApiType {
-  OLLAMA = "OLLAMA",
-  OPENAI = "OPENAI",
-}
+export type ApiType = "OLLAMA" | "OPENAI";
 
-export const DEFAULT_API_TYPE: string = ApiType.OLLAMA;
+export const DEFAULT_API_TYPE: ApiType = "OLLAMA";
 
 export const openAIApiKey = process.env.OPENAI_API_KEY;
 
@@ -55,10 +52,11 @@ export async function apiCallHandler(
   messages: object[],
   res: NextApiResponse,
   apiType = DEFAULT_API_TYPE,
+  modelOverride?: string,
 ) {
   console.log("User prompt:", prompt);
   switch (apiType) {
-    case ApiType.OLLAMA: {
+    case "OLLAMA": {
       const completion = await fetch("https://ollama.mattl.im/chat", {
         method: "POST",
         headers: {
@@ -66,7 +64,7 @@ export async function apiCallHandler(
           Authorization: `Bearer ${ollamaApiKey}`,
         },
         body: JSON.stringify({
-          model: "qwen2.5-coder",
+          model: modelOverride || "qwen2.5-coder:7b",
           messages,
         }),
       });
@@ -77,10 +75,10 @@ export async function apiCallHandler(
       console.log("Sent: " + ollamaRes);
       return res.status(200).json({ data: ollamaRes });
     }
-    case ApiType.OPENAI:
+    case "OPENAI":
     default: {
       const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: modelOverride || "gpt-4o-mini",
         messages,
       });
       console.log(completion);

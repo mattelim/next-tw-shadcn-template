@@ -37,11 +37,11 @@ ${prompt}
 Your output must be in the following format:
 """
 ${commentPrefix} $CODE_START
-! the code goes here
+${commentPrefix} {the code goes here}
 ${commentPrefix} $CODE_END
 
 ${commentPrefix} $EXAMPLE_START
-! the example usage goes here
+${commentPrefix} {the example usage goes here}
 ${commentPrefix} $EXAMPLE_END
 """
 `,
