@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   getQuickJS,
   // QuickJSWASMModule,
   QuickJSContext,
-  QuickJSRuntime
-} from 'quickjs-emscripten'
+  QuickJSRuntime,
+} from "quickjs-emscripten";
 
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -14,12 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Switch } from './ui/switch';
+import { Switch } from "./ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
-import CodeEditor from './CodeEditor';
-import { languages } from './CodeRunnerWrapper';
-import { capitalizeFirstLetter } from '@/lib/utils';
+import CodeEditor from "./CodeEditor";
+import { languages } from "./CodeRunnerWrapper";
+import { capitalizeFirstLetter } from "@/lib/utils";
 
 // import './App.css';
 // let pyodide: any;
@@ -55,10 +55,12 @@ const useInterpreterLoader = (language: string) => {
     const loadInterpreter = async () => {
       // if (!interpreterRef.current) {
       switch (language) {
-        case 'python': {
+        case "python": {
           // runTime = undefined;
           runTimeRef.current = undefined;
-          interpreterRef.current = await window.loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.23.0/full/' });
+          interpreterRef.current = await window.loadPyodide({
+            indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.0/full/",
+          });
           interpreterRef.current.runPython(`
 import sys
 from js import console
@@ -82,7 +84,7 @@ global_output = []
 
           break;
         }
-        case 'javascript': {
+        case "javascript": {
           // interpreter = await getQuickJS();
 
           // == runtime == //
@@ -125,7 +127,7 @@ global_output = []
         // }
       }
       setIsLoadingInterpreter(false);
-    }
+    };
     // }
     loadInterpreter();
 
@@ -138,47 +140,56 @@ global_output = []
   return { runTimeRef, interpreterRef, isLoadingInterpreter };
 };
 
-export default function CodeRunner(
-  { selectedLanguage, setSelectedLanguage }
-    : {
-      selectedLanguage: languages,
-      setSelectedLanguage: any
-    }) {
-
+export default function CodeRunner({
+  selectedLanguage,
+  setSelectedLanguage,
+}: {
+  selectedLanguage: languages;
+  setSelectedLanguage: any;
+}) {
   console.log("Rendered, selected language:", selectedLanguage);
   // const [codeInput, setCodeInput] = useState('let a = 1; let b = 2; a + b;');
-  const [promptInput, setPromptInput] = useState('');
-  const [pseudocodeInput, setPseudocodeInput] = useState('');
+  const [promptInput, setPromptInput] = useState("");
+  const [pseudocodeInput, setPseudocodeInput] = useState("");
   // const [codeInput, setCodeInput] = useState('a = 1\nb = 2\nprint(a + b)');
-  const [codeInput, setCodeInput] = useState('');
-  const [runCodeOutput, setRunCodeOutput] = useState('');
+  const [codeInput, setCodeInput] = useState("");
+  const [codeExampleInput, setCodeExampleInput] = useState("");
+  const [showCodeExample, setShowCodeExample] = useState(true);
+  const [runCodeOutput, setRunCodeOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [vmMode, setVmMode] = useState<boolean>(true);
 
   // const [selectedLanguage, setSelectedLanguage] = useState<languages>('javascript');
 
   // const { pyodide, isLoadingPyodide } = usePyodideLoader();
-  const { runTimeRef, interpreterRef, isLoadingInterpreter } = useInterpreterLoader(selectedLanguage);
+  const { runTimeRef, interpreterRef, isLoadingInterpreter } =
+    useInterpreterLoader(selectedLanguage);
 
-  async function promptToPseudocodeSubmit(event) {
+  async function promptToPseudocodeSubmit(event: React.FormEvent) {
     event.preventDefault();
     // setlogMsg("");
     // setWaiting(true);
     // setResult("// Please be patient, this may take a while...");
     // setSelVal("");
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_REMOTE_API_URL || ''}/api/prompt-to-pseudocode`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_REMOTE_API_URL || ""}/api/prompt-to-pseudocode`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ prompt: promptInput }),
         },
-        body: JSON.stringify({ prompt: promptInput }),
-      });
+      );
 
       const data = await response.json();
       if (response.status !== 200) {
         // setWaiting(false);
-        throw data.error || new Error(`Request failed with status ${response.status}`);
+        throw (
+          data.error ||
+          new Error(`Request failed with status ${response.status}`)
+        );
       }
       // setResult(data.code);
       // setSandboxRunning(true);
@@ -192,31 +203,68 @@ export default function CodeRunner(
     }
   }
 
-  async function pseudocodeToCodeSubmit(event) {
+  function separateCodeExample(combined: string): {
+    code: string;
+    example: string;
+  } {
+    const codePattern =
+      selectedLanguage === "python"
+        ? /# \$CODE_START([\s\S]*?)# \$CODE_END/
+        : /\/\/ \$CODE_START([\s\S]*?)\/\/ \$CODE_END/;
+
+    const examplePattern =
+      selectedLanguage === "python"
+        ? /# \$EXAMPLE_START([\s\S]*?)# \$EXAMPLE_END/
+        : /\/\/ \$EXAMPLE_START([\s\S]*?)\/\/ \$EXAMPLE_END/;
+
+    const codeMatch = combined.match(codePattern);
+    const exampleMatch = combined.match(examplePattern);
+
+    return {
+      code: codeMatch ? codeMatch[1].trim() : "",
+      example: exampleMatch ? exampleMatch[1].trim() : "",
+    };
+  }
+
+  async function pseudocodeToCodeSubmit(event: React.FormEvent) {
     event.preventDefault();
     // setlogMsg("");
     // setWaiting(true);
     // setResult("// Please be patient, this may take a while...");
     // setSelVal("");
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_REMOTE_API_URL || ''}/api/pseudocode-to-code`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_REMOTE_API_URL || ""}/api/pseudocode-to-code`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ prompt: pseudocodeInput, selectedLanguage }),
         },
-        body: JSON.stringify({ prompt: pseudocodeInput, selectedLanguage }),
-      });
+      );
 
       const data = await response.json();
       if (response.status !== 200) {
         // setWaiting(false);
-        throw data.error || new Error(`Request failed with status ${response.status}`);
+        throw (
+          data.error ||
+          new Error(`Request failed with status ${response.status}`)
+        );
       }
       // setResult(data.code);
       // setSandboxRunning(true);
       // setWaiting(false);
       // handleGenClick();
-      setCodeInput(data.data);
+      const { code, example } = separateCodeExample(data.data);
+      if (!code || !example) {
+        setShowCodeExample(false);
+        setCodeInput(data.data);
+      } else {
+        setShowCodeExample(true);
+        setCodeInput(code);
+        setCodeExampleInput(example);
+      }
     } catch (error) {
       console.error(error);
       alert(error.message);
@@ -226,21 +274,23 @@ export default function CodeRunner(
 
   const handleRunCode = useCallback(async () => {
     setIsRunning(true);
+    console.log(codeInput + "\n" + codeExampleInput);
 
     try {
-      if (selectedLanguage === 'python') {
+      if (selectedLanguage === "python") {
         // const pyodide = interpreter;
         // Capture the console output
         // let capturedOutput = '';
 
-        interpreterRef.current.runPython(codeInput);
-        const result = interpreterRef.current.globals.get('global_output');
-        setRunCodeOutput(result.toJs().join('\n'));
-
-      } else if (selectedLanguage === 'javascript') {
+        interpreterRef.current.runPython(codeInput + "\n" + codeExampleInput);
+        const result = interpreterRef.current.globals.get("global_output");
+        setRunCodeOutput(result.toJs().join("\n"));
+      } else if (selectedLanguage === "javascript") {
         // const quickjs: QuickJSContext = interpreterRef.current;
 
-        const result = (interpreterRef.current as QuickJSContext).evalCode(codeInput);
+        const result = (interpreterRef.current as QuickJSContext).evalCode(
+          codeInput + "\n" + codeExampleInput,
+        );
 
         // console.log('Result:', result);
 
@@ -248,12 +298,16 @@ export default function CodeRunner(
 
         if (result.error) {
           // console.error(interpreterRef.current.dump(result.error));
-          const error = (interpreterRef.current.dump(result.error));
-          setRunCodeOutput(prev => { return `${prev}\nError: ${error.name} - ${error.message}` });
+          const error = interpreterRef.current.dump(result.error);
+          setRunCodeOutput((prev) => {
+            return `${prev}\nError: ${error.name} - ${error.message}`;
+          });
         } else {
           // console.log(interpreterRef.current.getString(result.value));
           // setRunCodeOutput(prev => { return `${prev}\n${interpreterRef.current.getString(result.value)}` });
-          setRunCodeOutput(prev => { return `${prev}\n${JSON.stringify(interpreterRef.current.dump(result.value), null, 0)}` });
+          setRunCodeOutput((prev) => {
+            return `${prev}\n${JSON.stringify(interpreterRef.current.dump(result.value), null, 0)}`;
+          });
         }
       }
     } catch (err: any) {
@@ -261,20 +315,20 @@ export default function CodeRunner(
     }
 
     setIsRunning(false);
-  }, [codeInput, selectedLanguage, interpreterRef]);
+  }, [codeInput, codeExampleInput, selectedLanguage, interpreterRef]);
 
   const handleReset = useCallback(() => {
     // setCodeInput('');
     // setRunCodeOutput('');
     if (interpreterRef.current) {
-      if (selectedLanguage === 'python') {
+      if (selectedLanguage === "python") {
         // Reinitialize Pyodide to reset the Python environment
         interpreterRef.current.runPython(`
 import sys
 sys.modules.clear()
 `);
-        interpreterRef.current.globals.clear();
-      } else if (selectedLanguage === 'javascript') {
+        // interpreterRef.current.globals.clear();
+      } else if (selectedLanguage === "javascript") {
         // Reinitialize QuickJS to reset the JavaScript environment
         interpreterRef.current.dispose();
         interpreterRef.current = runTimeRef.current.newContext();
@@ -284,7 +338,9 @@ sys.modules.clear()
 
   // whenever runCodeOutput changes, scroll to the bottom of the output container
   useEffect(() => {
-    const outputContainer = document.getElementById('run-code-output-container');
+    const outputContainer = document.getElementById(
+      "run-code-output-container",
+    );
     if (outputContainer) {
       outputContainer.scrollTop = outputContainer.scrollHeight;
     }
@@ -292,7 +348,6 @@ sys.modules.clear()
 
   return (
     <div className="space-y-8 w-full p-4">
-
       {/* <div className="w-[180px]">
         <select className="w-full rounded p-2 bg-" value={selectedLanguage} onChange={(e) => setSelectedLanguage(e.target.value)}>
           <option value="python">Python</option>
@@ -307,12 +362,12 @@ sys.modules.clear()
           value={promptInput}
           onChange={(e) => setPromptInput(e.target.value)}
           placeholder={`Enter your function prompt here...`}
-          className='font-mono text-base border p-2 rounded-md w-full overflow-scroll'
+          className="font-mono text-base border p-2 rounded-md w-full overflow-scroll"
         />
-        <div className='w-full flex justify-end gap-2'>
+        <div className="w-full flex justify-end gap-2">
           <Button
             onClick={promptToPseudocodeSubmit}
-          // disabled={isRunning || isLoadingInterpreter}
+            // disabled={isRunning || isLoadingInterpreter}
           >
             Generate pseudocode
           </Button>
@@ -327,18 +382,17 @@ sys.modules.clear()
           value={pseudocodeInput}
           onChange={(e) => setPseudocodeInput(e.target.value)}
           placeholder={`Enter your function pseudocode here...`}
-          className='font-mono text-base border p-2 rounded-md w-full overflow-scroll'
+          className="font-mono text-base border p-2 rounded-md w-full overflow-scroll"
         />
-
       </div>
 
-      <div className='flex justify-between'>
-        <div className='flex gap-4'>
+      <div className="flex justify-between">
+        <div className="flex gap-4">
           <Select
             onValueChange={(value) => {
               setSelectedLanguage(value as languages);
-              // setCodeInput(''); 
-              // setRunCodeOutput(''); 
+              // setCodeInput('');
+              // setRunCodeOutput('');
             }}
             value={selectedLanguage}
           >
@@ -350,18 +404,18 @@ sys.modules.clear()
               <SelectItem value="javascript">JavaScript</SelectItem>
             </SelectContent>
           </Select>
-          <div className='flex items-center text-sm gap-2'>
-            <p className=' shrink-0'>VM Mode</p>
+          <div className="flex items-center text-sm gap-2">
+            <p className=" shrink-0">VM Mode</p>
             <Switch
               checked={vmMode}
               onCheckedChange={() => setVmMode(!vmMode)}
             />
           </div>
         </div>
-        <div className='w-full flex justify-end gap-2'>
+        <div className="w-full flex justify-end gap-2">
           <Button
             onClick={pseudocodeToCodeSubmit}
-          // disabled={isRunning || isLoadingInterpreter}
+            // disabled={isRunning || isLoadingInterpreter}
           >
             Generate {capitalizeFirstLetter(selectedLanguage)} code
           </Button>
@@ -386,17 +440,37 @@ sys.modules.clear()
           placeholder={`Enter your ${selectedLanguage} code here...`}
           className='font-mono text-base border p-2 rounded-md w-full overflow-scroll'
         /> */}
-        <CodeEditor codeInput={codeInput} setCodeInput={setCodeInput} selectedLanguage={selectedLanguage} />
-        <div className='w-full flex justify-end gap-2'>
+        <CodeEditor
+          input={codeInput}
+          setInput={setCodeInput}
+          selectedLanguage={selectedLanguage}
+        />
+        {showCodeExample && (
+          <>
+            <h3>Example</h3>
+            <CodeEditor
+              input={codeExampleInput}
+              setInput={setCodeExampleInput}
+              selectedLanguage={selectedLanguage}
+              editorHeight="100px"
+            />
+          </>
+        )}
+        <div className="w-full flex justify-end gap-2">
           <Button
             onClick={handleRunCode}
             disabled={isRunning || isLoadingInterpreter}
           >
-            {isLoadingInterpreter ?
-              'Loading Pyodide...' : isRunning ? 'Running...' :
-                `Run ${capitalizeFirstLetter(selectedLanguage)} Code`}
+            {isLoadingInterpreter
+              ? "Loading Pyodide..."
+              : isRunning
+                ? "Running..."
+                : `Run ${capitalizeFirstLetter(selectedLanguage)} Code`}
           </Button>
-          <Button onClick={handleReset} disabled={isRunning || isLoadingInterpreter}>
+          <Button
+            onClick={handleReset}
+            disabled={isRunning || isLoadingInterpreter}
+          >
             Reset REPL
           </Button>
         </div>
@@ -404,11 +478,16 @@ sys.modules.clear()
 
       <div className="output">
         <h3>Output</h3>
-        <pre id='run-code-output-container' className='border p-2 rounded-md w-full h-40 overflow-scroll '>{runCodeOutput}</pre>
+        <pre
+          id="run-code-output-container"
+          className="border p-2 rounded-md w-full h-40 overflow-scroll "
+        >
+          {runCodeOutput}
+        </pre>
       </div>
     </div>
   );
-};
+}
 
 // export default memo(CodeRunner);
 
