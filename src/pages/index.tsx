@@ -25,8 +25,7 @@ export default function Home() {
       <main className="w-full">
         <CodeRunnerWrapper />
       </main>
-      <footer className="">
-      </footer>
+      <footer className=""></footer>
     </div>
   );
 }

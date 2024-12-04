@@ -1,7 +1,7 @@
 import { useState } from "react";
 import CodeRunner from "./CodeRunner";
 
-export type languages = 'python' | 'javascript'; // | 'ruby';
+export type languages = "python" | "javascript"; // | 'ruby';
 
 export default function CodeRunnerWrapper() {
   const [selectedLanguage, setSelectedLanguage] = useState<languages>("python");
