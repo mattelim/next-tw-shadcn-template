@@ -1,16 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   getQuickJS,
   // QuickJSWASMModule,
   QuickJSContext,
   QuickJSRuntime
 } from 'quickjs-emscripten'
-
-declare global {
-  interface Window {
-    loadPyodide: (config: { indexURL: string }) => Promise<any>;
-  }
-}
 
 import { Button } from '@/components/ui/button';
 import {
@@ -20,10 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from './ui/switch';
 import { Textarea } from "@/components/ui/textarea";
 
 import CodeEditor from './CodeEditor';
 import { languages } from './CodeRunnerWrapper';
+import { capitalizeFirstLetter } from '@/lib/utils';
 
 // import './App.css';
 // let pyodide: any;
@@ -31,6 +27,12 @@ import { languages } from './CodeRunnerWrapper';
 // let quickjsWasm: any;
 // let interpreter: any;
 // let runTime: any;
+
+declare global {
+  interface Window {
+    loadPyodide: (config: { indexURL: string }) => Promise<any>;
+  }
+}
 
 const useInterpreterLoader = (language: string) => {
   // const [isLoadingPyodide, setIsLoadingPyodide] = useState(true);
@@ -73,6 +75,11 @@ sys.stderr = ConsoleCapture()
 global_output = []
       `);
           console.log("Python interpreter loaded");
+
+          // load optional packages
+          // await interpreterRef.current.loadPackage("micropip");
+          // await pyodide.loadPackage("numpy");
+
           break;
         }
         case 'javascript': {
@@ -90,7 +97,7 @@ global_output = []
 
           //       // Define `_sendToHost` to call back to the host's `captureOutput`
           //       interpreter.evalCode('globalThis._sendToHost = (msg) => callHostFunction(msg);', {
-          //         callHostFunction: (msg) => setOutput(interpreter.getString(msg))
+          //         callHostFunction: (msg) => setRunCodeOutput(interpreter.getString(msg))
           //       });
           // interpreter = new QuickJSWASMModule(QuickJSEmscriptenModule, QuickJSFFI);
           runTimeRef.current = quickJS.newRuntime();
@@ -134,18 +141,88 @@ global_output = []
 export default function CodeRunner(
   { selectedLanguage, setSelectedLanguage }
     : {
-      selectedLanguage: string,
+      selectedLanguage: languages,
       setSelectedLanguage: any
     }) {
 
   console.log("Rendered, selected language:", selectedLanguage);
-  const [input, setInput] = useState('let a = 1; let b = 2; a + b;');
-  const [output, setOutput] = useState('');
+  // const [codeInput, setCodeInput] = useState('let a = 1; let b = 2; a + b;');
+  const [promptInput, setPromptInput] = useState('');
+  const [pseudocodeInput, setPseudocodeInput] = useState('');
+  // const [codeInput, setCodeInput] = useState('a = 1\nb = 2\nprint(a + b)');
+  const [codeInput, setCodeInput] = useState('');
+  const [runCodeOutput, setRunCodeOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
+  const [vmMode, setVmMode] = useState<boolean>(true);
+
   // const [selectedLanguage, setSelectedLanguage] = useState<languages>('javascript');
 
   // const { pyodide, isLoadingPyodide } = usePyodideLoader();
   const { runTimeRef, interpreterRef, isLoadingInterpreter } = useInterpreterLoader(selectedLanguage);
+
+  async function promptToPseudocodeSubmit(event) {
+    event.preventDefault();
+    // setlogMsg("");
+    // setWaiting(true);
+    // setResult("// Please be patient, this may take a while...");
+    // setSelVal("");
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_REMOTE_API_URL || ''}/api/prompt-to-pseudocode`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt: promptInput }),
+      });
+
+      const data = await response.json();
+      if (response.status !== 200) {
+        // setWaiting(false);
+        throw data.error || new Error(`Request failed with status ${response.status}`);
+      }
+      // setResult(data.code);
+      // setSandboxRunning(true);
+      // setWaiting(false);
+      // handleGenClick();
+      setPseudocodeInput(data.data);
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+      // setWaiting(false);
+    }
+  }
+
+  async function pseudocodeToCodeSubmit(event) {
+    event.preventDefault();
+    // setlogMsg("");
+    // setWaiting(true);
+    // setResult("// Please be patient, this may take a while...");
+    // setSelVal("");
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_REMOTE_API_URL || ''}/api/pseudocode-to-code`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt: pseudocodeInput, selectedLanguage }),
+      });
+
+      const data = await response.json();
+      if (response.status !== 200) {
+        // setWaiting(false);
+        throw data.error || new Error(`Request failed with status ${response.status}`);
+      }
+      // setResult(data.code);
+      // setSandboxRunning(true);
+      // setWaiting(false);
+      // handleGenClick();
+      setCodeInput(data.data);
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+      // setWaiting(false);
+    }
+  }
 
   const handleRunCode = useCallback(async () => {
     setIsRunning(true);
@@ -156,38 +233,39 @@ export default function CodeRunner(
         // Capture the console output
         // let capturedOutput = '';
 
-        interpreterRef.current.runPython(input);
+        interpreterRef.current.runPython(codeInput);
         const result = interpreterRef.current.globals.get('global_output');
-        setOutput(result.toJs().join('\n'));
+        setRunCodeOutput(result.toJs().join('\n'));
 
       } else if (selectedLanguage === 'javascript') {
         // const quickjs: QuickJSContext = interpreterRef.current;
 
-        const result = (interpreterRef.current as QuickJSContext).evalCode(input);
+        const result = (interpreterRef.current as QuickJSContext).evalCode(codeInput);
 
         // console.log('Result:', result);
 
-        // setOutput(JSON.stringify(result, null, 0));
+        // setRunCodeOutput(JSON.stringify(result, null, 0));
 
         if (result.error) {
           // console.error(interpreterRef.current.dump(result.error));
           const error = (interpreterRef.current.dump(result.error));
-          setOutput(prev => { return `${prev}\nError: ${error.name} - ${error.message}` });
+          setRunCodeOutput(prev => { return `${prev}\nError: ${error.name} - ${error.message}` });
         } else {
           // console.log(interpreterRef.current.getString(result.value));
-          setOutput(prev => { return `${prev}\n${interpreterRef.current.getString(result.value)}` });
+          // setRunCodeOutput(prev => { return `${prev}\n${interpreterRef.current.getString(result.value)}` });
+          setRunCodeOutput(prev => { return `${prev}\n${JSON.stringify(interpreterRef.current.dump(result.value), null, 0)}` });
         }
       }
     } catch (err: any) {
-      setOutput(err.toString());
+      setRunCodeOutput(err.toString());
     }
 
     setIsRunning(false);
-  }, [input, selectedLanguage, interpreterRef]);
+  }, [codeInput, selectedLanguage, interpreterRef]);
 
   const handleReset = useCallback(() => {
-    // setInput('');
-    // setOutput('');
+    // setCodeInput('');
+    // setRunCodeOutput('');
     if (interpreterRef.current) {
       if (selectedLanguage === 'python') {
         // Reinitialize Pyodide to reset the Python environment
@@ -204,50 +282,111 @@ sys.modules.clear()
     }
   }, [selectedLanguage, interpreterRef, runTimeRef]);
 
+  // whenever runCodeOutput changes, scroll to the bottom of the output container
+  useEffect(() => {
+    const outputContainer = document.getElementById('run-code-output-container');
+    if (outputContainer) {
+      outputContainer.scrollTop = outputContainer.scrollHeight;
+    }
+  }, [runCodeOutput]);
+
   return (
     <div className="space-y-8 w-full p-4">
-      <Select
-        onValueChange={(value) => {
-          setSelectedLanguage(value as languages);
-          // setInput(''); 
-          // setOutput(''); 
-        }}
-        value={selectedLanguage}
-      >
-        <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder="Programming Language" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="python">Python</SelectItem>
-          <SelectItem value="javascript">JavaScript</SelectItem>
-        </SelectContent>
-      </Select>
+
       {/* <div className="w-[180px]">
         <select className="w-full rounded p-2 bg-" value={selectedLanguage} onChange={(e) => setSelectedLanguage(e.target.value)}>
           <option value="python">Python</option>
           <option value="javascript">JavaScript</option>
         </select>
       </div> */}
+      <div>
+        <h3>Prompt</h3>
+        <Textarea
+          rows={3}
+          cols={50}
+          value={promptInput}
+          onChange={(e) => setPromptInput(e.target.value)}
+          placeholder={`Enter your function prompt here...`}
+          className='font-mono text-base border p-2 rounded-md w-full overflow-scroll'
+        />
+        <div className='w-full flex justify-end gap-2'>
+          <Button
+            onClick={promptToPseudocodeSubmit}
+          // disabled={isRunning || isLoadingInterpreter}
+          >
+            Generate pseudocode
+          </Button>
+        </div>
+      </div>
 
       <div>
-        <h3>Run {selectedLanguage} Code in WASM</h3>
+        <h3>Pseudocode</h3>
+        <Textarea
+          rows={8}
+          cols={50}
+          value={pseudocodeInput}
+          onChange={(e) => setPseudocodeInput(e.target.value)}
+          placeholder={`Enter your function pseudocode here...`}
+          className='font-mono text-base border p-2 rounded-md w-full overflow-scroll'
+        />
+
+      </div>
+
+      <div className='flex justify-between'>
+        <div className='flex gap-4'>
+          <Select
+            onValueChange={(value) => {
+              setSelectedLanguage(value as languages);
+              // setCodeInput(''); 
+              // setRunCodeOutput(''); 
+            }}
+            value={selectedLanguage}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Programming Language" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="python">Python</SelectItem>
+              <SelectItem value="javascript">JavaScript</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className='flex items-center text-sm gap-2'>
+            <p className=' shrink-0'>VM Mode</p>
+            <Switch
+              checked={vmMode}
+              onCheckedChange={() => setVmMode(!vmMode)}
+            />
+          </div>
+        </div>
+        <div className='w-full flex justify-end gap-2'>
+          <Button
+            onClick={pseudocodeToCodeSubmit}
+          // disabled={isRunning || isLoadingInterpreter}
+          >
+            Generate {capitalizeFirstLetter(selectedLanguage)} code
+          </Button>
+        </div>
+      </div>
+
+      <div>
+        <h3>{capitalizeFirstLetter(selectedLanguage)} Code</h3>
         {/* <textarea
           rows={10}
           cols={50}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
+          value={codeInput}
+          onChange={(e) => setCodeInput(e.target.value)}
           placeholder={`Enter your ${selectedLanguage} code here...`}
           className='font-mono border p-2 rounded-md w-full overflow-scroll'
         /> */}
         {/* <Textarea
           rows={10}
           cols={50}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
+          value={codeInput}
+          onChange={(e) => setCodeInput(e.target.value)}
           placeholder={`Enter your ${selectedLanguage} code here...`}
           className='font-mono text-base border p-2 rounded-md w-full overflow-scroll'
         /> */}
-        <CodeEditor input={input} setInput={setInput} selectedLanguage={selectedLanguage} />
+        <CodeEditor codeInput={codeInput} setCodeInput={setCodeInput} selectedLanguage={selectedLanguage} />
         <div className='w-full flex justify-end gap-2'>
           <Button
             onClick={handleRunCode}
@@ -255,7 +394,7 @@ sys.modules.clear()
           >
             {isLoadingInterpreter ?
               'Loading Pyodide...' : isRunning ? 'Running...' :
-                `Run ${selectedLanguage} Code`}
+                `Run ${capitalizeFirstLetter(selectedLanguage)} Code`}
           </Button>
           <Button onClick={handleReset} disabled={isRunning || isLoadingInterpreter}>
             Reset REPL
@@ -265,7 +404,7 @@ sys.modules.clear()
 
       <div className="output">
         <h3>Output</h3>
-        <pre className='border p-2 rounded-md w-full min-h-36 overflow-scroll'>{output}</pre>
+        <pre id='run-code-output-container' className='border p-2 rounded-md w-full h-40 overflow-scroll '>{runCodeOutput}</pre>
       </div>
     </div>
   );
