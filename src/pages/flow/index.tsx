@@ -5,19 +5,28 @@ import {
   useNodesState,
   useEdgesState,
   addEdge,
+  Controls,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import NumberInput from "@/components/NumberInput";
-import ColorPreview from "@/components/ColorPreview";
-import Lightness from "@/components/Lightness";
-import Log from "@/components/Log";
+import NumberInput from "@/components/flow/NumberInput";
+import ColorPreview from "@/components/flow/ColorPreview";
+import Lightness from "@/components/flow/Lightness";
+import Log from "@/components/flow/Log";
+import TextInput from "@/components/flow/TextInput";
+import OutputNode from "@/components/flow/OutputNode";
+import CodeBlockSimple from "@/components/flow/CodeBlockSimple";
+
+import { FlowPyodideProvider } from "@/components/flow/FlowPyodideContext";
 
 const nodeTypes = {
   NumberInput,
   ColorPreview,
   Lightness,
   Log,
+  TextInput,
+  OutputNode,
+  CodeBlockSimple,
 };
 
 const initialNodes = [
@@ -40,12 +49,36 @@ const initialNodes = [
     position: { x: 0, y: 200 },
   },
   {
+    type: "TextInput",
+    id: "t1",
+    data: { label: "Input", value: "'example text input'" },
+    position: { x: 0, y: 200 },
+  },
+  {
     type: "ColorPreview",
     id: "color",
     position: { x: 150, y: 50 },
     data: {
       label: "Color",
       value: { r: undefined, g: undefined, b: undefined },
+    },
+  },
+  {
+    type: "CodeBlockSimple",
+    id: "code-block-2",
+    position: { x: 300, y: 200 },
+    data: {
+      label: "code-block-2",
+      value: { bid: undefined, result: undefined },
+    },
+  },
+  {
+    type: "CodeBlockSimple",
+    id: "code-block-5",
+    position: { x: 500, y: 400 },
+    data: {
+      label: "code-block-5",
+      value: { bid: undefined, result: undefined },
     },
   },
   {
@@ -65,6 +98,24 @@ const initialNodes = [
     type: "Log",
     position: { x: 500, y: 140 },
     data: { label: "Use white font", fontColor: "white" },
+  },
+  {
+    id: "output",
+    type: "OutputNode",
+    position: { x: 650, y: 400 },
+    data: { label: "Output" },
+  },
+  {
+    id: "output-2",
+    type: "OutputNode",
+    position: { x: 650, y: 400 },
+    data: { label: "Output" },
+  },
+  {
+    id: "output-3",
+    type: "OutputNode",
+    position: { x: 650, y: 400 },
+    data: { label: "Output" },
   },
 ];
 
@@ -104,6 +155,16 @@ const initialEdges = [
     sourceHandle: "dark",
     target: "log-2",
   },
+  {
+    id: "edge-test-1",
+    source: "t1",
+    target: "code-block-2",
+  },
+  {
+    id: "edge-test-2",
+    source: "code-block-2",
+    target: "output",
+  },
 ];
 
 function ReactiveFlow() {
@@ -115,17 +176,20 @@ function ReactiveFlow() {
   );
   return (
     <div className="w-screen h-screen text-sm">
-      <ReactFlow
-        nodeTypes={nodeTypes}
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        fitView
-      >
-        <Background />
-      </ReactFlow>
+      <FlowPyodideProvider>
+        <ReactFlow
+          nodeTypes={nodeTypes}
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          fitView
+        >
+          <Background />
+          <Controls />
+        </ReactFlow>
+      </FlowPyodideProvider>
     </div>
   );
 }
