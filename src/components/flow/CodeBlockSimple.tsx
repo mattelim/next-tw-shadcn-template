@@ -250,9 +250,7 @@ export default function CodeBlockSimple({ id, data }) {
         />
       ))} */}
       {codeBlock?.title && (
-        <p className="w-full text-center absolute top-2 px-2">
-          {codeBlock.title}
-        </p>
+        <p className="w-full text-center px-2">{codeBlock.title}</p>
       )}
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />

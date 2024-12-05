@@ -12,24 +12,26 @@ export default function CodeBlockList() {
   // console.log(codeBlocks);
 
   return (
-    <ul>
-      {codeBlocks?.map((codeBlock) => (
-        <li key={codeBlock.id}>
-          <Link href={`/code-block/${codeBlock.id}`}>
-            {codeBlock.title} {codeBlock.id}{" "}
-            {codeBlock.codeInstances[0].programmingLanguage}
-          </Link>
-          <Button
-            variant={"destructive"}
-            onClick={(e) => {
-              db.codeBlocks.delete(codeBlock.id);
-            }}
-          >
-            <Trash2 />
-          </Button>
-        </li>
-      ))}
-    </ul>
+    <div className="w-full flex flex-col items-center justify-center">
+      <ul>
+        {codeBlocks?.map((codeBlock) => (
+          <li key={codeBlock.id}>
+            <Link href={`/code-block/${codeBlock.id}`}>
+              {codeBlock.title} {codeBlock.id}{" "}
+              {codeBlock.codeInstances[0].programmingLanguage}
+            </Link>
+            <Button
+              variant={"destructive"}
+              onClick={(e) => {
+                db.codeBlocks.delete(codeBlock.id);
+              }}
+            >
+              <Trash2 />
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "./ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Save } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 
 import CodeEditor from "./CodeEditor";
 // import { languages } from "./CodeRunnerWrapper";
@@ -331,48 +331,62 @@ global_output = []
   }
 
   return (
-    <>
-      <div className="sticky top-4 flex m-4 p-4 border border-border rounded-md justify-between bg-white/90 backdrop-blur-md hover:bg-white transition-all">
-        <input
-          type="text"
-          placeholder="Title"
-          value={codeBlockTitle}
-          onChange={(e) => setCodeBlockTitle(e.target.value)}
-          className="p-2 rounded-md w-96"
-        />
-        <Select
-          onValueChange={(value) => {
-            setModelQuality(value as TModelQuality);
-            // setCodeInput('');
-            // setRunCodeOutput('');
-          }}
-          value={modelQuality}
-        >
-          <SelectTrigger className="w-max">
-            <SelectValue placeholder="Select model quality" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="low">Low </SelectItem>
-            <SelectItem value="high">High </SelectItem>
-          </SelectContent>
-        </Select>
-        <Button
-          className="p-0 aspect-square [&_svg]:size-6"
-          disabled={codeBlockId === undefined ? false : !isValuesChanged}
-          onClick={handleSaveCodeBlock}
-        >
-          <Save strokeWidth={1.5} />
-        </Button>
+    <div className="flex flex-col items-center w-full">
+      <div className="w-full sticky">
+        <div className="top-4 flex items-center m-4 p-4 border border-border rounded-md justify-between bg-white/90 backdrop-blur-md hover:bg-white transition-all">
+          <div className="flex items-center gap-2">
+            <Button
+              className="aspect-square p-0 [&_svg]:size-5"
+              variant={"ghost"}
+              onClick={() => router.push("/")}
+            >
+              <ArrowLeft />
+            </Button>
+            <input
+              type="text"
+              placeholder="Title"
+              value={codeBlockTitle}
+              onChange={(e) => setCodeBlockTitle(e.target.value)}
+              className="p-2 rounded-md w-96 text-lg font-semibold"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span>Model Quality</span>
+            <Select
+              onValueChange={(value) => {
+                setModelQuality(value as TModelQuality);
+                // setCodeInput('');
+                // setRunCodeOutput('');
+              }}
+              value={modelQuality}
+            >
+              <SelectTrigger className="w-max">
+                <SelectValue placeholder="Select model quality" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low </SelectItem>
+                <SelectItem value="high">High </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            className="p-0 aspect-square [&_svg]:size-6"
+            disabled={codeBlockId === undefined ? false : !isValuesChanged}
+            onClick={handleSaveCodeBlock}
+          >
+            <Save strokeWidth={1.5} />
+          </Button>
+        </div>
       </div>
-      <div className="space-y-8 w-full p-4">
+      <div className="space-y-8 w-full p-4 max-w-3xl flex flex-col">
         {/* <div className="w-[180px]">
         <select className="w-full rounded p-2 bg-" value={selectedLanguage} onChange={(e) => setSelectedLanguage(e.target.value)}>
           <option value="python">Python</option>
           <option value="javascript">JavaScript</option>
         </select>
       </div> */}
-        <div>
-          <h3>Prompt</h3>
+        <div className="flex flex-col gap-4">
+          <h3 className="font-semibold">Prompt</h3>
           <Textarea
             rows={3}
             cols={50}
@@ -384,6 +398,7 @@ global_output = []
           <div className="w-full flex justify-end gap-2">
             <Button
               onClick={promptToPseudocodeSubmit}
+              className="w-52"
               // disabled={isRunning || isLoadingInterpreter}
             >
               Generate pseudocode
@@ -391,11 +406,11 @@ global_output = []
           </div>
         </div>
 
-        <div>
-          <h3>Pseudocode</h3>
+        <div className="flex flex-col gap-4">
+          <h3 className="font-semibold">Pseudocode</h3>
           <Textarea
-            rows={8}
-            cols={50}
+            rows={12}
+            cols={100}
             value={pseudocodeInput}
             onChange={(e) => setPseudocodeInput(e.target.value)}
             placeholder={`Enter your function pseudocode here...`}
@@ -432,6 +447,7 @@ global_output = []
           <div className="w-full flex justify-end gap-2">
             <Button
               onClick={pseudocodeToCodeSubmit}
+              className="w-52"
               // disabled={isRunning || isLoadingInterpreter}
             >
               Generate {capitalizeFirstLetter(selectedLanguage)} code
@@ -439,8 +455,10 @@ global_output = []
           </div>
         </div>
 
-        <div>
-          <h3>{capitalizeFirstLetter(selectedLanguage)} Code</h3>
+        <div className="flex flex-col gap-4">
+          <h3 className="font-semibold">
+            {capitalizeFirstLetter(selectedLanguage)} Code
+          </h3>
           {/* <textarea
           rows={10}
           cols={50}
@@ -461,10 +479,11 @@ global_output = []
             input={codeInput}
             setInput={setCodeInput}
             selectedLanguage={selectedLanguage}
+            editorHeight="300px"
           />
           {showCodeExample && (
             <>
-              <h3>Example</h3>
+              <h3 className="font-semibold">Example</h3>
               <CodeEditor
                 input={codeExampleInput}
                 setInput={setCodeExampleInput}
@@ -478,6 +497,7 @@ global_output = []
               <Button
                 onClick={handleReset}
                 disabled={isRunning || isLoadingInterpreter}
+                className="w-52"
               >
                 Reset REPL
               </Button>
@@ -485,6 +505,7 @@ global_output = []
             <Button
               onClick={handleRunCode}
               disabled={isRunning || isLoadingInterpreter}
+              className="w-52"
             >
               {isLoadingInterpreter
                 ? "Loading Pyodide..."
@@ -495,8 +516,8 @@ global_output = []
           </div>
         </div>
 
-        <div className="output">
-          <h3>Output</h3>
+        <div className="flex flex-col gap-4 pb-20">
+          <h3 className="font-semibold">Output</h3>
           <pre
             id="run-code-output-container"
             className="border p-2 rounded-md w-full h-40 overflow-scroll "
@@ -505,7 +526,7 @@ global_output = []
           </pre>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
