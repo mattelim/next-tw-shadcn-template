@@ -1,10 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  getQuickJS,
-  // QuickJSWASMModule,
-  QuickJSContext,
-  QuickJSRuntime,
-} from "quickjs-emscripten";
+import React, { useState, useEffect, useCallback } from "react";
+import { QuickJSContext } from "quickjs-emscripten";
+import { useRouter } from "next/router";
 // import { loadPyodide } from "pyodide";  // tried, doesn't work
 
 import { Button } from "@/components/ui/button";
@@ -20,150 +16,78 @@ import { Textarea } from "@/components/ui/textarea";
 import { Save } from "lucide-react";
 
 import CodeEditor from "./CodeEditor";
-import { languages } from "./CodeRunnerWrapper";
+// import { languages } from "./CodeRunnerWrapper";
 import { capitalizeFirstLetter } from "@/lib/utils";
-import { db } from "@/lib/db";
+import { db, TCodeBlock } from "@/lib/db";
+// import { useRouter } from "next/router";
 
-declare global {
-  interface Window {
-    loadPyodide: (config: { indexURL: string }) => Promise<any>;
-  }
-}
+import { languages, TModelQuality, useInterpreterLoader } from "@/lib/utils";
 
-const useInterpreterLoader = (language: string) => {
-  // const [isLoadingPyodide, setIsLoadingPyodide] = useState(true);
-  // const [isLoadingOpal, setIsLoadingOpal] = useState(true);
-  // const [isLoadingQuickJS, setIsLoadingQuickJS] = useState(true);
-  const runTimeRef = useRef<any>();
-  const interpreterRef = useRef<any>();
-  const [isLoadingInterpreter, setIsLoadingInterpreter] = useState(true);
-
-  useEffect(() => {
-    setIsLoadingInterpreter(true);
-    console.log("Loading interpreter for language:", language);
-    // const loadPyodide = async () => {
-    //   if (!pyodide) {
-    //     pyodide = await window.loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.23.0/full/' });
-    //   }
-    //   setIsLoadingPyodide(false);
-    // };
-    // loadPyodide();
-    const loadInterpreter = async () => {
-      // if (!interpreterRef.current) {
-      switch (language) {
-        case "python": {
-          // runTime = undefined;
-          runTimeRef.current = undefined;
-          interpreterRef.current = await window.loadPyodide({
-            indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.0/full/",
-          });
-          interpreterRef.current.runPython(`
-import sys
-from js import console
-class ConsoleCapture:
-    def write(self, s):
-        if s.strip():
-            console.log(s)
-            global_output.append(s)
-    def flush(self):
-        pass
-
-sys.stdout = ConsoleCapture()
-sys.stderr = ConsoleCapture()
-global_output = []
-      `);
-          console.log("Python interpreter loaded");
-
-          // load optional packages
-          // await interpreterRef.current.loadPackage("micropip");
-          // await pyodide.loadPackage("numpy");
-
-          break;
-        }
-        case "javascript": {
-          // interpreter = await getQuickJS();
-
-          // == runtime == //
-
-          const quickJS = await getQuickJS();
-          //       interpreter.evalCode(`
-          //   globalThis.console = {
-          //     log: (msg) => { _sendToHost(String(msg)); },
-          //     error: (msg) => { _sendToHost("Error: " + String(msg)); },
-          //   };
-          // `);
-
-          //       // Define `_sendToHost` to call back to the host's `captureOutput`
-          //       interpreter.evalCode('globalThis._sendToHost = (msg) => callHostFunction(msg);', {
-          //         callHostFunction: (msg) => setRunCodeOutput(interpreter.getString(msg))
-          //       });
-          // interpreter = new QuickJSWASMModule(QuickJSEmscriptenModule, QuickJSFFI);
-          runTimeRef.current = quickJS.newRuntime();
-          const runTimeTyped = runTimeRef.current as QuickJSRuntime;
-
-          interpreterRef.current = runTimeTyped.newContext();
-          // const interpreterTyped = interpreter as QuickJSContext;
-
-          // const interpreter = ctx;
-          // let test = interpreterTyped.evalCode(`let a = 1; let b = 2; a + b;`);
-          // test = interpreterTyped.evalCode(`a - b;`);
-          // // let test = quickJS.evalCode(`console.log("Hello, World!");`);
-          // // console.log("Test:", test.unwrap());
-          // if (test.error) {
-          //   console.error(interpreterTyped.dump(test.error));
-          // } else {
-          //   console.log(interpreterTyped.getString(test.value));
-          // }
-          console.log("JavaScript interpreter loaded");
-          break;
-        }
-        // case 'ruby': {
-        //   interpreter = await window.loadOpal({ indexURL: 'https://cdn.opalrb.com/opal/current/' });
-        //   break;
-        // }
-      }
-      setIsLoadingInterpreter(false);
-    };
-    // }
-    loadInterpreter();
-
-    // return () => {
-    //   if (interpreterRef.current) {
-    //     if (language === 'python') {
-    //       interpreterRef
-  }, [language]);
-
-  return { runTimeRef, interpreterRef, isLoadingInterpreter };
+export type CodeRunnerProps = {
+  selectedLanguage: languages;
+  setSelectedLanguage: React.Dispatch<React.SetStateAction<languages>>;
+  promptInput: string;
+  setPromptInput: React.Dispatch<React.SetStateAction<string>>;
+  pseudocodeInput: string;
+  setPseudocodeInput: React.Dispatch<React.SetStateAction<string>>;
+  codeInput: string;
+  setCodeInput: React.Dispatch<React.SetStateAction<string>>;
+  codeExampleInput: string;
+  setCodeExampleInput: React.Dispatch<React.SetStateAction<string>>;
+  showCodeExample: boolean;
+  setShowCodeExample: React.Dispatch<React.SetStateAction<boolean>>;
+  isRunning: boolean;
+  setIsRunning: React.Dispatch<React.SetStateAction<boolean>>;
+  vmMode: boolean;
+  setVmMode: React.Dispatch<React.SetStateAction<boolean>>;
+  modelQuality: TModelQuality;
+  setModelQuality: React.Dispatch<React.SetStateAction<TModelQuality>>;
+  codeBlockTitle: string;
+  setCodeBlockTitle: React.Dispatch<React.SetStateAction<string>>;
+  codeBlockId?: number;
+  isValuesChanged?: boolean;
+  setUpdateCount?: React.Dispatch<React.SetStateAction<number>>;
 };
-
-type TModelQuality = "low" | "high";
 
 export default function CodeRunner({
   selectedLanguage,
   setSelectedLanguage,
-}: {
-  selectedLanguage: languages;
-  setSelectedLanguage: any;
-}) {
-  console.log("Rendered, selected language:", selectedLanguage);
-  // const [codeInput, setCodeInput] = useState('let a = 1; let b = 2; a + b;');
-  const [promptInput, setPromptInput] = useState("");
-  const [pseudocodeInput, setPseudocodeInput] = useState("");
-  // const [codeInput, setCodeInput] = useState('a = 1\nb = 2\nprint(a + b)');
-  const [codeInput, setCodeInput] = useState("");
-  const [codeExampleInput, setCodeExampleInput] = useState("");
-  const [showCodeExample, setShowCodeExample] = useState(true);
+  promptInput,
+  setPromptInput,
+  pseudocodeInput,
+  setPseudocodeInput,
+  codeInput,
+  setCodeInput,
+  codeExampleInput,
+  setCodeExampleInput,
+  showCodeExample,
+  setShowCodeExample,
+  isRunning,
+  setIsRunning,
+  vmMode,
+  setVmMode,
+  modelQuality,
+  setModelQuality,
+  codeBlockTitle,
+  setCodeBlockTitle,
+  codeBlockId,
+  isValuesChanged,
+  setUpdateCount,
+}: CodeRunnerProps) {
   const [runCodeOutput, setRunCodeOutput] = useState("");
-  const [isRunning, setIsRunning] = useState(false);
-  const [vmMode, setVmMode] = useState<boolean>(false);
-  const [modelQuality, setModelQuality] = useState<TModelQuality>("high");
-  const [codeBlockTitle, setCodeBlockTitle] = useState("");
-
-  // const [selectedLanguage, setSelectedLanguage] = useState<languages>('javascript');
+  const router = useRouter();
 
   // const { pyodide, isLoadingPyodide } = usePyodideLoader();
   const { runTimeRef, interpreterRef, isLoadingInterpreter } =
     useInterpreterLoader(selectedLanguage);
+
+  function errorAlertHandler(error: unknown) {
+    if (error instanceof Error) {
+      alert(error.message);
+    } else {
+      alert(String(error));
+    }
+  }
 
   async function promptToPseudocodeSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -198,7 +122,7 @@ export default function CodeRunner({
       setPseudocodeInput(data.data);
     } catch (error) {
       console.error(error);
-      alert(error.message);
+      errorAlertHandler(error);
       // setWaiting(false);
     }
   }
@@ -271,7 +195,7 @@ export default function CodeRunner({
       }
     } catch (error) {
       console.error(error);
-      alert(error.message);
+      errorAlertHandler(error);
       // setWaiting(false);
     }
   }
@@ -369,10 +293,10 @@ global_output = []
     }
   }, [runCodeOutput]);
 
-  function handleSaveCodeBlock(event: React.FormEvent) {
+  async function handleSaveCodeBlock(event: React.FormEvent) {
     event.preventDefault();
     try {
-      const id = db.codeBlocks.add({
+      const codeBlockObj: Omit<TCodeBlock, "id"> = {
         title: codeBlockTitle,
         prompt: promptInput,
         pseudocode: pseudocodeInput,
@@ -389,11 +313,20 @@ global_output = []
           modelUsed: modelQuality,
           createdBy: "",
         },
-      });
-      console.log("Saved code block with id:", id);
+      };
+      if (codeBlockId) {
+        await db.codeBlocks.update(codeBlockId, codeBlockObj);
+        console.log("Updated code block with id:", codeBlockId);
+        // router.push(`/code-block/${codeBlockId}`);
+        if (setUpdateCount) setUpdateCount((prev) => prev + 1);
+      } else {
+        const id = await db.codeBlocks.add(codeBlockObj);
+        console.log("Saved code block with id:", id);
+        router.push(`/code-block/${id}`);
+      }
     } catch (error) {
       console.error(error);
-      alert(error.message);
+      errorAlertHandler(error);
     }
   }
 
@@ -425,6 +358,7 @@ global_output = []
         </Select>
         <Button
           className="p-0 aspect-square [&_svg]:size-6"
+          disabled={codeBlockId === undefined ? false : !isValuesChanged}
           onClick={handleSaveCodeBlock}
         >
           <Save strokeWidth={1.5} />
@@ -540,6 +474,14 @@ global_output = []
             </>
           )}
           <div className="w-full flex justify-end gap-2">
+            {vmMode && (
+              <Button
+                onClick={handleReset}
+                disabled={isRunning || isLoadingInterpreter}
+              >
+                Reset REPL
+              </Button>
+            )}
             <Button
               onClick={handleRunCode}
               disabled={isRunning || isLoadingInterpreter}
@@ -549,12 +491,6 @@ global_output = []
                 : isRunning
                   ? "Running..."
                   : `Run ${capitalizeFirstLetter(selectedLanguage)} Code`}
-            </Button>
-            <Button
-              onClick={handleReset}
-              disabled={isRunning || isLoadingInterpreter}
-            >
-              Reset REPL
             </Button>
           </div>
         </div>

@@ -13,7 +13,7 @@ interface codeInstances {
   example: string;
 }
 
-interface CodeBlock {
+interface TCodeBlock {
   id: number;
   title: string;
   prompt: string;
@@ -24,7 +24,7 @@ interface CodeBlock {
 
 const db = new Dexie("CodeBlocksDatabase") as Dexie & {
   codeBlocks: EntityTable<
-    CodeBlock,
+    TCodeBlock,
     "id" // primary key "id" (for the typings only)
   >;
 };
@@ -34,5 +34,5 @@ db.version(1).stores({
   codeBlocks: "++id, title, prompt, pseudocode, codeInstances, metaData",
 });
 
-export type { CodeBlock };
+export type { TCodeBlock };
 export { db };
